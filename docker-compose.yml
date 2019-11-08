@@ -1,0 +1,56 @@
+version: '3'
+services:
+  php:
+    build:
+      context: ./.docker
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./:/var/www/html:cached
+      - ./.docker/Settings.php:/config/Settings.php
+      - ./.docker/install.sh:/install.sh
+    depends_on:
+      - database
+    environment:
+      MW_PRE_CONFIG_FILE: '/config/Settings.php'
+  php-xdebug:
+    image: docker-registry.wikimedia.org/dev/stretch-php72-webserver-xdebug:0.0.1-1
+    ports:
+      - "9090:80"
+    volumes:
+      - ./:/var/www/html:cached
+      - ./.docker/Settings.php:/config/Settings.php
+    depends_on:
+      - database
+    environment:
+      MW_PRE_CONFIG_FILE: '/config/Settings.php'
+  database:
+    image: bitnami/mysql:5.7
+    environment:
+      ALLOW_EMPTY_PASSWORD: 'yes'
+      MYSQL_REPLICATION_MODE: master
+      MYSQL_REPLICATION_USER: replicator
+      MYSQL_REPLICATION_PASSWORD: replicator
+      MYSQL_DATABASE: mediawiki
+    ports:
+      - '3306'
+    volumes:
+      - dbdata:/var/lib/mysql
+  databasereplica:
+    depends_on:
+      - database
+    image: bitnami/mysql:5.7
+    environment:
+      ALLOW_EMPTY_PASSWORD: 'yes'
+      MYSQL_REPLICATION_MODE: slave
+      MYSQL_REPLICATION_USER: replicator
+      MYSQL_REPLICATION_PASSWORD: replicator
+      MYSQL_MASTER_HOST: database
+      MYSQL_MASTER_PORT_NUMBER: 3306
+    ports:
+      - '3306'
+  redis:
+    image: redis
+volumes:
+  dbdata:
